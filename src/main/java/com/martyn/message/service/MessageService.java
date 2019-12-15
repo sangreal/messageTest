@@ -1,49 +1,73 @@
 package com.martyn.message.service;
 
 import com.martyn.message.data.Message;
+import com.martyn.message.exception.MyException;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class MessageService {
-    ConcurrentHashMap<String, List<Message>> messageStore = new ConcurrentHashMap<>();
-    ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>> idxMap = new ConcurrentHashMap<>();
+    private Map<String, List<Message>> messageStore = new ConcurrentHashMap<>();
+    private Map<String, Map<String, AtomicInteger>> idxMap = new ConcurrentHashMap<>();
 
-    public void recvMessage(Message message) throws Exception {
+    public void publishMessage(Message message) throws MyException {
         String topic = Optional.ofNullable(message
         ).orElse(new Message()).getTopicName();
         if (topic == null || topic.length() == 0) {
-            throw new Exception("");
+            throw new MyException("push message error : topic cannot be null");
         }
 
-        messageStore.computeIfAbsent(topic, t -> new ArrayList<>());
+        messageStore.computeIfAbsent(topic, t -> new CopyOnWriteArrayList<>());
         messageStore.computeIfPresent(topic, (s, messages) -> {
             messages.add(message);
             return messages;
         });
     }
 
-    public Message pollMessage(String topic, String userId) throws Exception {
+    public Message pollMessage(String topic, String userId) throws MyException {
+        AtomicInteger offset = getOffsetByUserIdTopicName(topic, userId);
+        return getMessageByTopicOffset(topic, offset.get());
+    }
+
+    public int ackMessage(String topic, String userId) {
+        return incrOffset(topic, userId);
+    }
+
+    public void subscribeTopic(String topic, String userId) {
+        idxMap.putIfAbsent(topic, new ConcurrentHashMap<>());
+        idxMap.get(topic).putIfAbsent(userId, new AtomicInteger(0));
+    }
+
+    public void registerTopic(String topic) {
+        messageStore.putIfAbsent(topic, new CopyOnWriteArrayList<>());
+    }
+
+    private AtomicInteger getOffsetByUserIdTopicName(String topic, String userId) {
+        Map<String, AtomicInteger> userMap = idxMap.getOrDefault(topic, new ConcurrentHashMap<>());
+        return userMap.getOrDefault(userId, new AtomicInteger(0));
+    }
+
+    private int incrOffset(String topic, String userId) {
+        Map<String, AtomicInteger> userMap = idxMap.getOrDefault(topic, new ConcurrentHashMap<>());
+        return userMap.get(userId).incrementAndGet();
+    }
+
+    private Message getMessageByTopicOffset(String topic, int offset) throws MyException {
         if (!messageStore.containsKey(topic)) {
-            throw new Exception("there are no such topic");
+            throw new MyException("there are no such topic");
         }
-        List<Message> messageList = messageStore.getOrDefault(topic, new ArrayList<>());
-        ConcurrentHashMap<String, Integer> userMap = idxMap.getOrDefault(topic, new ConcurrentHashMap<>());
-        int offset = userMap.getOrDefault(userId, 0);
-        offset++;
-        userMap.put(userId, offset);
-        if (messageList.size() > offset) {
-            Message retMsg = messageList.get(offset);
-            idxMap.put(topic, userMap);
-            return retMsg;
-        } else {
-            userMap.put(userId, 0);
-            throw new Exception("offset exceed the message length, reset to zero");
+        if (messageStore.size() == offset) {
+            return new Message();
+        } else if (messageStore.size() < offset) {
+            throw new MyException("offset is larger than current queue length");
         }
 
+        return messageStore.get(topic).get(offset);
     }
 }
