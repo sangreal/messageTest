@@ -31,11 +31,17 @@ public class MessageService {
     }
 
     public Message pollMessage(String topic, String userId) throws MyException {
+        if (!idxMap.get(topic).containsKey(userId)) {
+            throw new MyException("receiver has not subsribe this topic yet");
+        }
         AtomicInteger offset = getOffsetByUserIdTopicName(topic, userId);
         return getMessageByTopicOffset(topic, offset.get());
     }
 
     public int ackMessage(String topic, String userId) {
+        if (!idxMap.get(topic).containsKey(userId)) {
+            throw new MyException("receiver has not subsribe this topic yet");
+        }
         return incrOffset(topic, userId);
     }
 
@@ -48,12 +54,12 @@ public class MessageService {
         messageStore.putIfAbsent(topic, new CopyOnWriteArrayList<>());
     }
 
-    private AtomicInteger getOffsetByUserIdTopicName(String topic, String userId) {
+    private  AtomicInteger getOffsetByUserIdTopicName(String topic, String userId) {
         Map<String, AtomicInteger> userMap = idxMap.getOrDefault(topic, new ConcurrentHashMap<>());
         return userMap.getOrDefault(userId, new AtomicInteger(0));
     }
 
-    private int incrOffset(String topic, String userId) {
+    private  int incrOffset(String topic, String userId) {
         Map<String, AtomicInteger> userMap = idxMap.getOrDefault(topic, new ConcurrentHashMap<>());
         return userMap.get(userId).incrementAndGet();
     }
@@ -62,12 +68,22 @@ public class MessageService {
         if (!messageStore.containsKey(topic)) {
             throw new MyException("there are no such topic");
         }
-        if (messageStore.size() == offset) {
+        List<Message> curlist = messageStore.get(topic);
+        if (curlist.size() == offset) {
             return new Message();
-        } else if (messageStore.size() < offset) {
+        } else if (curlist.size() < offset) {
             throw new MyException("offset is larger than current queue length");
         }
 
         return messageStore.get(topic).get(offset);
+    }
+
+
+    public Map<String, List<Message>> getMessageStore() {
+        return messageStore;
+    }
+
+    public Map<String, Map<String, AtomicInteger>> getIdxMap() {
+        return idxMap;
     }
 }

@@ -7,17 +7,16 @@ import java.sql.Timestamp;
 
 @Data
 public class Message {
-    private String sendId;
     private String topicName;
     private String message;
     private Timestamp timestamp;
 
-    public String getSendId() {
-        return sendId;
-    }
+    public Message() {}
 
-    public void setSendId(String sendId) {
-        this.sendId = sendId;
+    public Message(String topicName, String message, Timestamp timestamp) {
+        this.topicName = topicName;
+        this.message = message;
+        this.timestamp = timestamp;
     }
 
     public String getTopicName() {
@@ -42,5 +41,31 @@ public class Message {
 
     public void setTimestamp(Timestamp timestamp) {
         this.timestamp = timestamp;
+    }
+
+
+    public static class Builder {
+        private String topicName;
+        private String message;
+        private Timestamp timestamp;
+
+        public Builder setTopicName(String topicName) {
+            this.topicName = topicName;
+            return this;
+        }
+
+        public Builder setMessage(String message) {
+            this.message = message;
+            return this;
+        }
+
+        public Builder setTimestamp(Timestamp timestamp) {
+            this.timestamp = timestamp;
+            return this;
+        }
+
+        public Message build() {
+            return new Message(this.topicName, this.message, this.timestamp);
+        }
     }
 }

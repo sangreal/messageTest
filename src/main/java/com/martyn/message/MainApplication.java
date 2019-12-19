@@ -11,8 +11,8 @@ public class MainApplication {
         SpringApplication.run(MainApplication.class, args);
     }
 
-    @Bean
-    public EmbeddedServletContainerCustomizer embeddedServletContainerCustomizer() {
-        return container -> container.setContextPath("/v1/");
-    }
+//    @Bean
+//    public EmbeddedServletContainerCustomizer embeddedServletContainerCustomizer() {
+//        return container -> container.setContextPath("/v1/");
+//    }
 }
