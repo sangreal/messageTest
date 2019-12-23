@@ -1,13 +1,14 @@
 package com.martyn.message.data;
 
 
-import org.springframework.data.annotation.Id;
 
+import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
+import javax.persistence.Id;
 import java.util.Map;
 
-
+@Entity
 public class Offset {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
