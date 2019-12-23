@@ -122,7 +122,6 @@ public class MessageServiceTest {
             f.join();
         }
 
-
         LOGGER.info("mset1 : " + mset1.size());
 
         Assert.assertEquals(mset1.size(), messageCnt);

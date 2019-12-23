@@ -3,15 +3,26 @@ package com.martyn.message.data;
 
 import lombok.Data;
 
+import javax.annotation.PostConstruct;
 import java.sql.Timestamp;
+import java.util.UUID;
+import javax.persistence.Entity;
 
 @Data
+@Entity
 public class Message {
+    private String uuid;
+
     private String topicName;
     private String message;
     private Timestamp timestamp;
 
     public Message() {}
+
+    @PostConstruct
+    private void init() {
+        uuid = UUID.randomUUID().toString();
+    }
 
     public Message(String topicName, String message, Timestamp timestamp) {
         this.topicName = topicName;

@@ -1,9 +1,13 @@
 package com.martyn.message.service;
 
+import com.martyn.message.common.ThreadHelper;
 import com.martyn.message.data.Message;
+import com.martyn.message.data.Offset;
 import com.martyn.message.exception.MyException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -13,8 +17,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class MessageService {
-    private Map<String, List<Message>> messageStore = new ConcurrentHashMap<>();
-    private Map<String, Map<String, AtomicInteger>> idxMap = new ConcurrentHashMap<>();
+    @Autowired
+    private CustomContext customContext;
+
+    @Autowired
+    private ThreadHelper threadHelper;
+
+    @Autowired
+    private PersistenceExecutor persistenceExecutor;
+
+    private Map<String, List<Message>> messageStore;
+    private Map<String, Map<String, AtomicInteger>> idxMap;
+
+    @PostConstruct
+    private void init() {
+        messageStore = customContext.getMessageStore();
+        idxMap = customContext.getIdxMap();
+    }
 
     public void publishMessage(Message message) throws MyException {
         String topic = Optional.ofNullable(message
@@ -28,6 +47,8 @@ public class MessageService {
             messages.add(message);
             return messages;
         });
+
+        threadHelper.getExecutor().submit(() -> persistenceExecutor.persistMessage(message));
     }
 
     public Message pollMessage(String topic, String userId) throws MyException {
@@ -42,7 +63,17 @@ public class MessageService {
         if (!idxMap.get(topic).containsKey(userId)) {
             throw new MyException("receiver has not subsribe this topic yet");
         }
-        return incrOffset(topic, userId);
+
+
+        int newOffset = incrOffset(topic, userId);
+        Offset toStore = new Offset.Builder()
+                .setTopic(topic)
+                .setUserId(userId)
+                .setOffset(newOffset)
+                .build();
+        threadHelper.getExecutor().submit(() -> persistenceExecutor.persistOffset(toStore));
+
+        return newOffset;
     }
 
     public void subscribeTopic(String topic, String userId) {
@@ -61,6 +92,7 @@ public class MessageService {
 
     private  int incrOffset(String topic, String userId) {
         Map<String, AtomicInteger> userMap = idxMap.getOrDefault(topic, new ConcurrentHashMap<>());
+
         return userMap.get(userId).incrementAndGet();
     }
 
