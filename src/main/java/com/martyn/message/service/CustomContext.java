@@ -37,7 +37,7 @@ public class CustomContext {
 
         Set<String> topics = messageList.stream().map(Message::getTopicName).collect(Collectors.toSet());
         for (String topic : topics) {
-            List<Message> userMsgList = messageRepository.findByTopicName(topic);
+            List<Message> userMsgList = messageRepository.findByTopicNameOrderByTimestamp(topic);
             messageStore.put(topic, userMsgList);
         }
 

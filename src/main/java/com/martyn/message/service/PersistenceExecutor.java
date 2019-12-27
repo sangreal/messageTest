@@ -24,7 +24,7 @@ public class PersistenceExecutor {
         messageRepository.save(message);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void persistOffset(Offset offset) {
         List<Offset> prevlist = offsetRepository.findByTopicAndUserId(offset.getTopic(), offset.getUserId());
         if (prevlist.size() == 0) {
@@ -34,8 +34,6 @@ public class PersistenceExecutor {
             prev.setOffset(offset.getOffset());
             if (prev.getOffset() < offset.getOffset()) {
                 offsetRepository.save(prev);
-            } else {
-                throw new MyException("the offset is less the current offset, ignore ");
             }
         }
     }

@@ -7,16 +7,16 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class PoolConfig {
 
-    @Value("${pool.core.size}")
+    @Value("${pool.core_size}")
     private int coolPoolSize;
 
-    @Value("${pool.max.size}")
+    @Value("${pool.max_size}")
     private int maxPoolSize;
 
-    @Value("${pool.keepalive.second}")
+    @Value("${pool.keepalive_second}")
     private int keepAliveSecond;
 
-    @Value("${pool.queue.capacity}")
+    @Value("${pool.queue_capacity}")
     private int queueCapacity;
 
     public int getCoolPoolSize() {

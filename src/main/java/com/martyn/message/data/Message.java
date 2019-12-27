@@ -3,32 +3,31 @@ package com.martyn.message.data;
 
 import lombok.Data;
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.validator.constraints.NotBlank;
 
 import javax.annotation.PostConstruct;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.UUID;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
+import javax.validation.constraints.NotNull;
 
 @Entity
 public class Message {
     @Id
-    @GeneratedValue(generator = "uuid")
-    @GenericGenerator(name = "uuid", strategy = "uuid2")
-    private String uuid;
+    @GeneratedValue
+    private long id;
 
+    @NotBlank
     private String topicName;
+    @NotBlank
     private String message;
+
+    @NotNull
     private Timestamp timestamp;
 
     public Message() {}
 
-    @PostConstruct
-    private void init() {
-        uuid = UUID.randomUUID().toString();
-    }
 
     public Message(String topicName, String message, Timestamp timestamp) {
         this.topicName = topicName;

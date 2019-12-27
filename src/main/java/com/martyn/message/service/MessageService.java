@@ -48,7 +48,9 @@ public class MessageService {
             return messages;
         });
 
-        threadHelper.getExecutor().submit(() -> persistenceExecutor.persistMessage(message));
+        // Use sync call to avoid complex error handling
+        // If makes it async, then
+        persistenceExecutor.persistMessage(message);
     }
 
     public Message pollMessage(String topic, String userId) throws MyException {
@@ -71,7 +73,9 @@ public class MessageService {
                 .setUserId(userId)
                 .setOffset(newOffset)
                 .build();
-        threadHelper.getExecutor().submit(() -> persistenceExecutor.persistOffset(toStore));
+
+        // Use sync call to avoid complex error handling
+        persistenceExecutor.persistOffset(toStore);
 
         return newOffset;
     }

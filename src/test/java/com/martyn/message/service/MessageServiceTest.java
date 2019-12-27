@@ -1,6 +1,7 @@
 package com.martyn.message.service;
 
 import com.martyn.message.MainApplication;
+import com.martyn.message.common.ThreadHelper;
 import com.martyn.message.data.Message;
 import org.junit.Assert;
 import org.junit.Test;
@@ -12,10 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringBootTest(classes = MainApplication.class)
@@ -23,7 +21,7 @@ public class MessageServiceTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageServiceTest.class);
 
     @Autowired
-    private MessageService messageService;
+    private ThreadHelper threadHelper;
 
     @Autowired
     private Sender sender;
@@ -35,14 +33,21 @@ public class MessageServiceTest {
     public void sendMessage() throws Exception {
         final String topic = "test1";
         final String userId = "user1";
-        int messageCnt = 100;
+        int messageCnt = 20;
         List<String > res = new ArrayList<>();
         for (int i = 0; i < messageCnt; i++) res.add(String.valueOf(i));
-        res.forEach(i -> sender.sendMessage(topic, i));
-
+        List<CompletableFuture> results = new ArrayList<>();
+        res.forEach(i -> {
+            sender.sendMessage(topic, i);
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
         Set<String> sets = new HashSet<>();
 
-        ExecutorService executorService = Executors.newFixedThreadPool(5);
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
 
         receiver.subscribe(topic, userId);
         List<CompletableFuture> futures = new ArrayList<>();
@@ -56,7 +61,10 @@ public class MessageServiceTest {
 
         LOGGER.info("sets size : " + sets.size());
 
-        Assert.assertEquals(sets.size(), messageCnt);
+        threadHelper.getExecutor().awaitTermination(10, TimeUnit.SECONDS);
+        threadHelper.getExecutor().shutdown();
+
+        Assert.assertEquals(messageCnt, sets.size());
     }
 
     @Test
@@ -73,7 +81,14 @@ public class MessageServiceTest {
         receiver.subscribe(topic, userId1);
         receiver.subscribe(topic, userId2);
 
-        res.forEach(i -> sender.sendMessage(topic, i));
+        res.forEach(i -> {
+            sender.sendMessage(topic, i);
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
 
         Set<String> mset1 = new HashSet<>();
         Set<String> mset2 = new HashSet<>();
@@ -108,8 +123,14 @@ public class MessageServiceTest {
         receiver.subscribe(topic, userId1);
         receiver.subscribe(topic, userId2);
 
-        res.forEach(i -> sender.sendMessage(topic, i));
-
+        res.forEach(i -> {
+            sender.sendMessage(topic, i);
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
         Set<String> mset1 = new HashSet<>();
 
         List<CompletableFuture> futures = new ArrayList<>();

@@ -17,6 +17,10 @@ spring:
     port: ${REDIS_PORT:6379}
 logging:
   level:
-    root: WARN
-    cc: INFO
-  file: ${LOG_FILE:/var/log/cc-backend.log}
+    root: INFO
+
+pool:
+  core_size: 10
+  max_size: 10
+  keepalive_second: 60
+  queue_capacity: 1000
