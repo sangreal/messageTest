@@ -7,6 +7,7 @@ import java.util.List;
 
 
 public interface MessageRepository extends JpaRepository<Message, String> {
+    List<Message> findBySn(long sn);
     List<Message> findByTopicNameOrderByTimestamp(String topic);
 }
 

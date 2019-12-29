@@ -6,6 +6,8 @@ import com.martyn.message.data.Offset;
 import com.martyn.message.data.repository.MessageRepository;
 import com.martyn.message.data.repository.OffsetRepository;
 import com.martyn.message.exception.MyException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,11 +22,21 @@ public class PersistenceExecutor {
     @Autowired
     private OffsetRepository offsetRepository;
 
+
+    private static final Logger logger = LoggerFactory.getLogger(PersistenceExecutor.class);
+
+    @Transactional(rollbackFor = RuntimeException.class)
     public void persistMessage(Message message) {
-        messageRepository.save(message);
+        List<Message> messageList = messageRepository.findBySn(message.getSn());
+        if (messageList.size() == 0) {
+            messageRepository.save(message);
+        } else {
+            logger.info("this is a dup message");
+            throw new MyException("this is a dup message");
+        }
     }
 
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = RuntimeException.class)
     public void persistOffset(Offset offset) {
         List<Offset> prevlist = offsetRepository.findByTopicAndUserId(offset.getTopic(), offset.getUserId());
         if (prevlist.size() == 0) {

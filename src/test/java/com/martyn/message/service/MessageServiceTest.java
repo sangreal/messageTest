@@ -10,13 +10,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Profile;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import java.util.*;
 import java.util.concurrent.*;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(classes = MainApplication.class)
+@ActiveProfiles("test")
+@SpringBootTest(classes = {MainApplication.class, H2JpaConfig.class})
 public class MessageServiceTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageServiceTest.class);
 
@@ -28,6 +31,7 @@ public class MessageServiceTest {
 
     @Autowired
     private Receiver receiver;
+
 
     @Test
     public void sendMessage() throws Exception {
@@ -96,6 +100,7 @@ public class MessageServiceTest {
         List<CompletableFuture> futures = new ArrayList<>();
         for (int j = 0; j < messageCnt; j++) {
             futures.add(CompletableFuture.supplyAsync(() -> receiver.pollMessage(topic, userId1)).thenAcceptAsync(fn -> mset1.add(fn.getMessage()), executorService));
+            futures.add(CompletableFuture.supplyAsync(() -> receiver.pollMessage(topic, userId2)).thenAcceptAsync(fn -> mset2.add(fn.getMessage()), executorService));
 
         }
 

@@ -44,13 +44,20 @@ public class MessageService {
 
         messageStore.computeIfAbsent(topic, t -> new CopyOnWriteArrayList<>());
         messageStore.computeIfPresent(topic, (s, messages) -> {
+            // CopyOnWriteArrayList will add Reentrant Lock while adding
             messages.add(message);
             return messages;
         });
 
         // Use sync call to avoid complex error handling
-        // If makes it async, then
-        persistenceExecutor.persistMessage(message);
+        try {
+            persistenceExecutor.persistMessage(message);
+        } catch (Exception e) {
+            // if any error happens, roll back for memory cache
+            // CopyOnWriteArrayList will add Reentrant Lock while removing
+            List<Message> messageList = messageStore.get(topic);
+            messageList.remove(messageList.size() - 1);
+        }
     }
 
     public Message pollMessage(String topic, String userId) throws MyException {
@@ -75,7 +82,12 @@ public class MessageService {
                 .build();
 
         // Use sync call to avoid complex error handling
-        persistenceExecutor.persistOffset(toStore);
+        try {
+            persistenceExecutor.persistOffset(toStore);
+        } catch (Exception e) {
+            // rollback offset by the usage of CAS operation
+            decrOffset(topic, userId);
+        }
 
         return newOffset;
     }
@@ -100,6 +112,11 @@ public class MessageService {
         return userMap.get(userId).incrementAndGet();
     }
 
+    private void decrOffset(String topic, String userId) {
+        Map<String, AtomicInteger> userMap = idxMap.getOrDefault(topic, new ConcurrentHashMap<>());
+        userMap.get(userId).decrementAndGet();
+    }
+
     private Message getMessageByTopicOffset(String topic, int offset) throws MyException {
         if (!messageStore.containsKey(topic)) {
             throw new MyException("there are no such topic");
@@ -115,11 +132,4 @@ public class MessageService {
     }
 
 
-    public Map<String, List<Message>> getMessageStore() {
-        return messageStore;
-    }
-
-    public Map<String, Map<String, AtomicInteger>> getIdxMap() {
-        return idxMap;
-    }
 }

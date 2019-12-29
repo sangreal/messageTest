@@ -13,10 +13,15 @@ import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 
 @Entity
+@Table(name = "messages")
 public class Message {
     @Id
     @GeneratedValue
     private long id;
+
+    // sequence number for deduplicate
+    @NotBlank
+    private long sn;
 
     @NotBlank
     private String topicName;
@@ -29,10 +34,16 @@ public class Message {
     public Message() {}
 
 
-    public Message(String topicName, String message, Timestamp timestamp) {
+    public Message(long sn, String topicName, String message, Timestamp timestamp) {
+        this.sn = sn;
         this.topicName = topicName;
         this.message = message;
         this.timestamp = timestamp;
+    }
+
+
+    public long getSn() {
+        return sn;
     }
 
     public String getTopicName() {
@@ -61,9 +72,16 @@ public class Message {
 
 
     public static class Builder {
+        private long sn;
         private String topicName;
         private String message;
         private Timestamp timestamp;
+
+
+        public Builder setSn(long sn) {
+            this.sn = sn;
+            return this;
+        }
 
         public Builder setTopicName(String topicName) {
             this.topicName = topicName;
@@ -81,7 +99,7 @@ public class Message {
         }
 
         public Message build() {
-            return new Message(this.topicName, this.message, this.timestamp);
+            return new Message(this.sn, this.topicName, this.message, this.timestamp);
         }
     }
 }

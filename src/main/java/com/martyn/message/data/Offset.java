@@ -2,13 +2,10 @@ package com.martyn.message.data;
 
 
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import java.util.Map;
+import javax.persistence.*;
 
 @Entity
+@Table(name = "offsets")
 public class Offset {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -16,6 +13,8 @@ public class Offset {
 
     private String topic;
     private String userId;
+
+    @Column(name = "offsets")
     private int offset;
 
     public long getId() {
