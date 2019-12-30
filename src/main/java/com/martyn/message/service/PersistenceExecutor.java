@@ -5,6 +5,7 @@ import com.martyn.message.data.Message;
 import com.martyn.message.data.Offset;
 import com.martyn.message.data.repository.MessageRepository;
 import com.martyn.message.data.repository.OffsetRepository;
+import com.martyn.message.exception.ErrorCode;
 import com.martyn.message.exception.MyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +33,7 @@ public class PersistenceExecutor {
             messageRepository.save(message);
         } else {
             logger.info("this is a dup message");
-            throw new MyException("this is a dup message");
+            throw new MyException(ErrorCode.DUP_MESSAGE);
         }
     }
 

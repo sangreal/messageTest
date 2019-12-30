@@ -3,8 +3,8 @@ package com.martyn.message.exception;
 public class MyException extends RuntimeException {
     private String message;
 
-    public MyException(String msg) {
-        message = msg;
+    public MyException(ErrorCode msg) {
+        message = ErrMessageStore.getMap().getOrDefault(msg, "");
     }
 
 

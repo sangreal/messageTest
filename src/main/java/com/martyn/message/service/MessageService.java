@@ -3,6 +3,7 @@ package com.martyn.message.service;
 import com.martyn.message.common.ThreadHelper;
 import com.martyn.message.data.Message;
 import com.martyn.message.data.Offset;
+import com.martyn.message.exception.ErrorCode;
 import com.martyn.message.exception.MyException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -39,7 +40,7 @@ public class MessageService {
         String topic = Optional.ofNullable(message
         ).orElse(new Message()).getTopicName();
         if (topic == null || topic.length() == 0) {
-            throw new MyException("push message error : topic cannot be null");
+            throw new MyException(ErrorCode.NULL_TOPIC);
         }
 
         messageStore.computeIfAbsent(topic, t -> new CopyOnWriteArrayList<>());
@@ -62,7 +63,7 @@ public class MessageService {
 
     public Message pollMessage(String topic, String userId) throws MyException {
         if (!idxMap.get(topic).containsKey(userId)) {
-            throw new MyException("receiver has not subsribe this topic yet");
+            throw new MyException(ErrorCode.NOT_SUBSCRIBED);
         }
         AtomicInteger offset = getOffsetByUserIdTopicName(topic, userId);
         return getMessageByTopicOffset(topic, offset.get());
@@ -70,7 +71,7 @@ public class MessageService {
 
     public int ackMessage(String topic, String userId) {
         if (!idxMap.get(topic).containsKey(userId)) {
-            throw new MyException("receiver has not subsribe this topic yet");
+            throw new MyException(ErrorCode.NOT_SUBSCRIBED);
         }
 
 
@@ -119,13 +120,13 @@ public class MessageService {
 
     private Message getMessageByTopicOffset(String topic, int offset) throws MyException {
         if (!messageStore.containsKey(topic)) {
-            throw new MyException("there are no such topic");
+            throw new MyException(ErrorCode.NO_SUCH_TOPIC);
         }
         List<Message> curlist = messageStore.get(topic);
         if (curlist.size() == offset) {
             return new Message();
         } else if (curlist.size() < offset) {
-            throw new MyException("offset is larger than current queue length");
+            throw new MyException(ErrorCode.OFFSET_INVALID);
         }
 
         return messageStore.get(topic).get(offset);
