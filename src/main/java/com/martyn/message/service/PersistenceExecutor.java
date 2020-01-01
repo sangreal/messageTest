@@ -28,11 +28,11 @@ public class PersistenceExecutor {
 
     @Transactional(rollbackFor = RuntimeException.class)
     public void persistMessage(Message message) {
-        List<Message> messageList = messageRepository.findBySn(message.getSn());
+        List<Message> messageList = messageRepository.findByPidAndSnAndTopicName(message.getPid(), message.getSn(), message.getTopicName());
         if (messageList.size() == 0) {
             messageRepository.save(message);
         } else {
-            logger.info("this is a dup message");
+            logger.warn("this is a dup message");
             throw new MyException(ErrorCode.DUP_MESSAGE);
         }
     }

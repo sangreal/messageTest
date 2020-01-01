@@ -11,6 +11,8 @@ public class ErrMessageStore {
             .put(ErrorCode.NO_SUCH_TOPIC, "there is no such topic")
             .put(ErrorCode.NOT_SUBSCRIBED, "consumer has not subscribe to the topic")
             .put(ErrorCode.OFFSET_INVALID, "The offset is invalid")
+            .put(ErrorCode.NO_MESSAGE, "There is no messages in the topic")
+            .put(ErrorCode.PERSISTENCE_ERR, "There is error when persisting the data")
             .build();
 
     public static Map<Enum, String> getMap() {

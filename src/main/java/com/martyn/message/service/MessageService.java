@@ -5,19 +5,22 @@ import com.martyn.message.data.Message;
 import com.martyn.message.data.Offset;
 import com.martyn.message.exception.ErrorCode;
 import com.martyn.message.exception.MyException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class MessageService {
+    private static final Logger logger = LoggerFactory.getLogger(MessageService.class);
+
     @Autowired
     private CustomContext customContext;
 
@@ -36,9 +39,7 @@ public class MessageService {
         idxMap = customContext.getIdxMap();
     }
 
-    public void publishMessage(Message message) throws MyException {
-        String topic = Optional.ofNullable(message
-        ).orElse(new Message()).getTopicName();
+    public void publishMessage(String topic, Message message) throws MyException {
         if (topic == null || topic.length() == 0) {
             throw new MyException(ErrorCode.NULL_TOPIC);
         }
@@ -50,6 +51,7 @@ public class MessageService {
             return messages;
         });
 
+        logger.info("message store size : " + messageStore.get(topic).size());
         // Use sync call to avoid complex error handling
         try {
             persistenceExecutor.persistMessage(message);
@@ -57,7 +59,12 @@ public class MessageService {
             // if any error happens, roll back for memory cache
             // CopyOnWriteArrayList will add Reentrant Lock while removing
             List<Message> messageList = messageStore.get(topic);
-            messageList.remove(messageList.size() - 1);
+            messageList.remove(message);
+            if (e instanceof MyException) {
+                throw e;
+            } else {
+                throw new MyException(ErrorCode.PERSISTENCE_ERR);
+            }
         }
     }
 
@@ -66,6 +73,7 @@ public class MessageService {
             throw new MyException(ErrorCode.NOT_SUBSCRIBED);
         }
         AtomicInteger offset = getOffsetByUserIdTopicName(topic, userId);
+        logger.info("the poll offset is : " + offset.get());
         return getMessageByTopicOffset(topic, offset.get());
     }
 
@@ -74,7 +82,6 @@ public class MessageService {
             throw new MyException(ErrorCode.NOT_SUBSCRIBED);
         }
 
-
         int newOffset = incrOffset(topic, userId);
         Offset toStore = new Offset.Builder()
                 .setTopic(topic)
@@ -82,12 +89,20 @@ public class MessageService {
                 .setOffset(newOffset)
                 .build();
 
+        logger.warn("tostore offset : " + toStore.toString());
+
+        // TODO change to async committing to remote database
         // Use sync call to avoid complex error handling
         try {
             persistenceExecutor.persistOffset(toStore);
         } catch (Exception e) {
             // rollback offset by the usage of CAS operation
             decrOffset(topic, userId);
+            if (e instanceof MyException) {
+                throw e;
+            } else {
+                throw new MyException(ErrorCode.PERSISTENCE_ERR);
+            }
         }
 
         return newOffset;
@@ -122,10 +137,12 @@ public class MessageService {
         if (!messageStore.containsKey(topic)) {
             throw new MyException(ErrorCode.NO_SUCH_TOPIC);
         }
-        List<Message> curlist = messageStore.get(topic);
-        if (curlist.size() == offset) {
-            return new Message();
-        } else if (curlist.size() < offset) {
+        List<Message> msgList = messageStore.get(topic);
+        logger.info("msgList size : " + msgList.size());
+        if (msgList.size() == offset) {
+            throw new MyException(ErrorCode.NO_MESSAGE);
+        } else if (msgList.size() < offset) {
+            logger.warn(String.format("the message list size : %d | offset : %d", msgList.size(), offset));
             throw new MyException(ErrorCode.OFFSET_INVALID);
         }
 

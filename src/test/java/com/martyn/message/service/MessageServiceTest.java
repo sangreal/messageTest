@@ -3,6 +3,7 @@ package com.martyn.message.service;
 import com.martyn.message.MainApplication;
 import com.martyn.message.common.ThreadHelper;
 import com.martyn.message.data.Message;
+import com.martyn.message.exception.MyException;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -32,6 +33,8 @@ public class MessageServiceTest {
     @Autowired
     private Receiver receiver;
 
+    @Autowired
+    private ErrorSender errorSender;
 
     @Test
     public void sendMessage() throws Exception {
@@ -40,7 +43,6 @@ public class MessageServiceTest {
         int messageCnt = 20;
         List<String > res = new ArrayList<>();
         for (int i = 0; i < messageCnt; i++) res.add(String.valueOf(i));
-        List<CompletableFuture> results = new ArrayList<>();
         res.forEach(i -> {
             sender.sendMessage(topic, i);
             try {
@@ -65,10 +67,28 @@ public class MessageServiceTest {
 
         LOGGER.info("sets size : " + sets.size());
 
-        threadHelper.getExecutor().awaitTermination(10, TimeUnit.SECONDS);
+        threadHelper.getExecutor().awaitTermination(5, TimeUnit.SECONDS);
         threadHelper.getExecutor().shutdown();
 
         Assert.assertEquals(messageCnt, sets.size());
+    }
+
+    @Test(expected = MyException.class)
+    public void testMessageWithWrongSN() {
+        final String topic = "test1";
+        final String userId = "user1";
+        int messageCnt = 20;
+        List<String > res = new ArrayList<>();
+        for (int i = 0; i < messageCnt; i++) res.add(String.valueOf(i));
+        res.forEach(i -> {
+            errorSender.sendMessage(topic, i);
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+
     }
 
     @Test

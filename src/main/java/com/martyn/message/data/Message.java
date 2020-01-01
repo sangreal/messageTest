@@ -1,16 +1,15 @@
 package com.martyn.message.data;
 
 
-import lombok.Data;
-import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.validator.constraints.NotBlank;
 
-import javax.annotation.PostConstruct;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.util.UUID;
-import javax.persistence.*;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
+import java.sql.Timestamp;
+import java.util.Objects;
 
 @Entity
 @Table(name = "messages")
@@ -19,8 +18,12 @@ public class Message {
     @GeneratedValue
     private long id;
 
-    // sequence number for deduplicate
+    // pid for producer id
     @NotBlank
+    private String pid;
+
+    // sequence number for deduplicate
+    @NotNull
     private long sn;
 
     @NotBlank
@@ -34,7 +37,8 @@ public class Message {
     public Message() {}
 
 
-    public Message(long sn, String topicName, String message, Timestamp timestamp) {
+    public Message(String pid, long sn, String topicName, String message, Timestamp timestamp) {
+        this.pid = pid;
         this.sn = sn;
         this.topicName = topicName;
         this.message = message;
@@ -44,6 +48,10 @@ public class Message {
 
     public long getSn() {
         return sn;
+    }
+
+    public String getPid() {
+        return pid;
     }
 
     public String getTopicName() {
@@ -70,13 +78,32 @@ public class Message {
         this.timestamp = timestamp;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Message message1 = (Message) o;
+        return sn == message1.sn &&
+                pid.equals(message1.pid) &&
+                message.equals(message1.message);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(pid, sn, message);
+    }
 
     public static class Builder {
+        private String pid;
         private long sn;
         private String topicName;
         private String message;
         private Timestamp timestamp;
 
+        public Builder setPid(String pid) {
+            this.pid = pid;
+            return this;
+        }
 
         public Builder setSn(long sn) {
             this.sn = sn;
@@ -99,7 +126,7 @@ public class Message {
         }
 
         public Message build() {
-            return new Message(this.sn, this.topicName, this.message, this.timestamp);
+            return new Message(this.pid, this.sn, this.topicName, this.message, this.timestamp);
         }
     }
 }

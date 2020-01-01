@@ -50,6 +50,11 @@ public class Offset {
     }
 
 
+    @Override
+    public String toString() {
+        return String.format("topic : %s | userid : %s | offset : %d", topic, userId, offset);
+    }
+
     public static class Builder {
         private String topic;
         private String userId;

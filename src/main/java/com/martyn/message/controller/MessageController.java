@@ -48,7 +48,7 @@ public class MessageController {
         if (result.hasErrors()) {
             ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result.getAllErrors());
         }
-        messageService.publishMessage(message);
+        messageService.publishMessage(topic, message);
         return ResponseEntity.ok().build();
     }
 }
